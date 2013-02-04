@@ -1,0 +1,38 @@
+name:                hstack
+version:             0.1.0.0
+synopsis:            Serving infrastructure stack.
+-- description:         
+license:             MIT
+license-file:        LICENSE
+author:              David Hinkes
+maintainer:          david.hinkes@gmail.com
+-- copyright:           
+category:            Network
+build-type:          Simple
+cabal-version:       >=1.8
+
+executable main 
+  main-is: Main.hs
+  hs-source-dirs: srcs
+  build-depends: base ==4.6.*
+
+library
+  ghc-options: -Wall
+  exposed-modules: Network.Hstack
+  hs-source-dirs: srcs       
+  build-depends: base ==4.6.*,
+                 bytestring,
+                 cereal,
+                 HTTP,
+                 mtl,
+                 snap-core,
+                 transformers
+test-suite test
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests
+  build-depends: hstack,
+                 base ==4.6.*,
+                 Cabal,
+                 test-framework,
+                 test-framework-quickcheck2
+  main-is: Test.hs
