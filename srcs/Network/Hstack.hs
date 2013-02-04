@@ -1,13 +1,16 @@
 module Network.Hstack (
-  Outcome(..),
+  Handler,
   OutcomeT(..),
-  Context(..) 
+  Outcome(..),
+  defaultParameters,
+  getInput,
+  evalHandler
 ) where
 
 import Control.Monad.IO.Class
+import Control.Monad.State.Lazy
 import Control.Monad.Reader
 import qualified Data.ByteString.Lazy as LBS
-import Data.Maybe
 import Data.Serialize
 import Data.String
 import qualified Snap.Core as S
@@ -38,28 +41,64 @@ instance Monad m => Monad (OutcomeT m) where
         ClientError s -> return $ ClientError s
   return a = lift . return $ a
 
-newtype Handler m i o = Handler {
-  runHandler :: Reader (Context i) (OutcomeT m o)
+instance (MonadIO m) => MonadIO (OutcomeT m) where
+  liftIO a = OutcomeT $ do
+    a' <- liftIO a
+    return . Ok $ a'
+
+newtype Parameters = Parameters {
+  bodySize :: Int
 }
 
-instance (Monad m) => Monad (Handler m i) where
-  a >>= f = Handler $ do
-    -- r :: OutcomeT m o
-    r <- runHandler a
-    -- c :: Context c
+defaultParameters :: Parameters
+defaultParameters = Parameters (1024*1024)
+
+newtype Action m i o = Action {
+  runAction :: Reader (Context i) (OutcomeT m o)
+}
+
+instance (Monad m) => Monad (Action m i) where
+  a >>= f = Action $ do
+    r <- runAction a
     c <- ask
-    return $ r >>= (\o -> (runReader . runHandler . f $ o) c)
+    let f' o = (runReader . runAction . f $ o) c
+    return $ r >>= f'
+  return x = Action . return . return $ x
+
+instance (MonadIO m) => MonadIO (Action m i) where
+  liftIO a = Action $ do
+    return . liftIO $ a
+
+newtype Handler m i o = Handler {
+  runHandler :: State Parameters (Action m i o)
+}
+
+evalHandler :: Handler m i o -> Parameters -> i -> m (Outcome o)
+evalHandler h p i = let
+  action = evalState (runHandler h) p
+  ot = runReader (runAction action) (Context i)
+  in runOutcomeT ot
+
+instance (Monad m) => Monad (Handler m i) where
+  -- f :: o -> Handler m i p
+  a >>= f = Handler $ do
+    r <- runHandler a
+    s <- Control.Monad.State.Lazy.get
+    -- s :: Parameters
+    -- r :: Action m i o
+    -- f' :: o -> Action m i p
+    let f' o = evalState (runHandler . f $ o) s
+    return (r >>= f')
   return x = Handler . return . return $ x
 
 instance (MonadIO m) => MonadIO (Handler m i) where
-  liftIO ioAction = Handler $ do
-    return $ OutcomeT (liftIO ioAction >>= return . Ok)
+  liftIO a = Handler $ do
+    return . liftIO $ a
 
 -- Util functions for doing useful things with the Handler Monad.
 getInput :: Monad m => Handler m i i
 getInput = Handler $ do
-  c <- ask
-  return . return . input $ c
+  return $ Action (ask >>= (return . return . input))
 
 data (Serialize i, Serialize o) => ServiceDescriptor i o = ServiceDescriptor {
   path :: String
@@ -89,5 +128,5 @@ createSnap d h =
     input <- decodeInput req
     let c = Context input
     -- Run the handler.
-    outcome <- liftIO $ runOutcomeT (runReader (runHandler h) c)
+    outcome <- liftIO $ evalHandler h defaultParameters input
     S.pass

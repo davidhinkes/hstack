@@ -33,6 +33,7 @@ test-suite test
   build-depends: hstack,
                  base ==4.6.*,
                  Cabal,
+                 mtl,
                  test-framework,
                  test-framework-quickcheck2
   main-is: Test.hs

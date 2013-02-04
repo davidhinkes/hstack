@@ -2,6 +2,7 @@ module Main (main) where
 
 import Network.Hstack
 
+import Control.Monad.Identity
 import Data.Maybe
 import Test.Framework.Providers.QuickCheck2
 import Test.Framework (defaultMain)
@@ -15,5 +16,16 @@ test_1 = let
     Just (Ok 10) -> True
     _ -> False
 
-tests = [ testProperty "CombineT" test_1]
+test_2 = let
+  a :: Handler Identity Int Int
+  a = do
+    i <- getInput
+    return (i*2)
+  in case runIdentity . evalHandler a defaultParameters $ 5 of
+    Ok 10 -> True
+    _ -> False
+
+tests = [ testProperty "CombineT" test_1,
+          testProperty "Handler" test_2 ]
+
 main = defaultMain tests
