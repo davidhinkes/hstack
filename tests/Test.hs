@@ -1,6 +1,7 @@
 module Main (main) where
 
 import Network.Hstack
+import Network.Hstack.Internal
 
 import Control.Monad.Identity
 import Data.Maybe

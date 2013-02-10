@@ -14,17 +14,43 @@ cabal-version:       >=1.8
 executable main 
   main-is: Main.hs
   hs-source-dirs: srcs
-  build-depends: base ==4.6.*
+  build-depends: hstack,
+                 base ==4.6.*,
+                 bytestring,
+                 cereal,
+                 HTTP,
+                 mtl,
+                 network,
+                 snap-core,
+                 snap-server,
+                 transformers
+
+executable example-server
+  main-is: Server.hs
+  hs-source-dirs: srcs
+  build-depends: hstack,
+                 base ==4.6.*,
+                 bytestring,
+                 cereal,
+                 HTTP,
+                 mtl,
+                 network,
+                 snap-core,
+                 snap-server,
+                 transformers
 
 library
   ghc-options: -Wall
-  exposed-modules: Network.Hstack
+  exposed-modules: Network.Hstack,
+                   Network.Hstack.Example
+                   Network.Hstack.Internal
   hs-source-dirs: srcs       
   build-depends: base ==4.6.*,
                  bytestring,
                  cereal,
                  HTTP,
                  mtl,
+                 network,
                  snap-core,
                  transformers
 test-suite test
