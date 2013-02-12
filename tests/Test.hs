@@ -2,8 +2,8 @@ module Main (main) where
 
 import Network.Hstack
 import Network.Hstack.Internal
-
 import Control.Monad.Identity
+import Control.Monad.State.Lazy
 import Data.Maybe
 import Test.Framework.Providers.QuickCheck2
 import Test.Framework (defaultMain)
@@ -26,7 +26,17 @@ test_2 = let
     Ok 10 -> True
     _ -> False
 
+parameterTest = let
+  a :: Handler Identity Int Int
+  a = do
+    i <- getInput
+    setParameters $ Parameters 69
+    return 0
+  (action, parameters) = (runState . runHandler $ a) defaultParameters
+  in (bodySize parameters) == 69
+
 tests = [ testProperty "CombineT" test_1,
-          testProperty "Handler" test_2 ]
+          testProperty "Handler" test_2,
+          testProperty "parameterTest" parameterTest ]
 
 main = defaultMain tests
