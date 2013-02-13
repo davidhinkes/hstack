@@ -36,27 +36,7 @@ instance Monad Outcome where
     ClientError s -> ClientError s
   return = Ok
 
-newtype Handler m i o = Handler {
-  runHandler :: State Parameters (Action m i o)
-}
-
-instance (Monad m) => Monad (Handler m i) where
-  -- f :: o -> Handler m i p
-  a >>= f = Handler $ do
-    r <- runHandler a
-    s <- Control.Monad.State.Lazy.get
-    -- s :: Parameters
-    -- r :: Action m i o
-    -- f' :: o -> Action m i p
-    let f' o = evalState (runHandler . f $ o) s
-    return (r >>= f')
-  return x = Handler . return . return $ x
-
-instance (MonadIO m) => MonadIO (Handler m i) where
-  liftIO a = Handler $ do
-    return . liftIO $ a
-
-
+type Handler m i o = Action m i o
 
 newtype Parameters = Parameters {
   bodySize :: Int64
@@ -103,12 +83,6 @@ instance (Monad m) => Monad (Action m i) where
 instance (MonadIO m) => MonadIO (Action m i) where
   liftIO a = Action $ do
     return . liftIO $ a
-
-evalHandler :: Handler m i o -> Parameters -> i -> m (Outcome o)
-evalHandler h p i = let
-  action = evalState (runHandler h) p
-  ot = runReader (runAction action) (Context i)
-  in runOutcomeT ot
 
 evalAction :: Action m i o -> i -> m (Outcome o)
 evalAction a i = let

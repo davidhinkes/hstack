@@ -13,7 +13,7 @@ cabal-version:       >=1.8
 
 executable main 
   main-is: Main.hs
-  hs-source-dirs: srcs
+  hs-source-dirs: src
   build-depends: hstack,
                  base ==4.6.*,
                  bytestring,
@@ -27,7 +27,7 @@ executable main
 
 executable example-server
   main-is: Server.hs
-  hs-source-dirs: srcs
+  hs-source-dirs: src
   build-depends: hstack,
                  base ==4.6.*,
                  bytestring,
@@ -44,7 +44,7 @@ library
   exposed-modules: Network.Hstack,
                    Network.Hstack.Example
                    Network.Hstack.Internal
-  hs-source-dirs: srcs       
+  hs-source-dirs: src       
   build-depends: base ==4.6.*,
                  bytestring,
                  cereal,

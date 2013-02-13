@@ -7,4 +7,4 @@ import Snap.Http.Server
 import Network.Hstack.Example (d, h)
 
 main = do
-  httpServe defaultConfig (createSnap d h)
+  httpServe defaultConfig (createSnap d defaultParameters h)

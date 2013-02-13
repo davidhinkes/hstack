@@ -22,21 +22,10 @@ test_2 = let
   a = do
     i <- getInput
     return (i*2)
-  in case runIdentity . evalHandler a defaultParameters $ 5 of
+  in case runIdentity . evalAction a $ 5 of
     Ok 10 -> True
     _ -> False
-
-parameterTest = let
-  a :: Handler Identity Int Int
-  a = do
-    i <- getInput
-    setParameters $ Parameters 69
-    return 0
-  (action, parameters) = (runState . runHandler $ a) defaultParameters
-  in (bodySize parameters) == 69
-
 tests = [ testProperty "CombineT" test_1,
-          testProperty "Handler" test_2,
-          testProperty "parameterTest" parameterTest ]
+          testProperty "Handler" test_2]
 
 main = defaultMain tests

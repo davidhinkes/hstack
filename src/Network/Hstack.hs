@@ -7,8 +7,6 @@ module Network.Hstack (
   createSnap,
   defaultParameters,
   getInput,
-  getParameters,
-  setParameters
 ) where
 
 import Control.Monad.IO.Class
@@ -28,18 +26,7 @@ import qualified Snap.Core as S
 
 -- Util functions for doing useful things with the Handler Monad.
 getInput :: Monad m => Handler m i i
-getInput = Handler $ do
-  return $ Action (ask >>= (return . return . input))
-
-getParameters :: Monad m => Handler m i Parameters
-getParameters = Handler $ do
-  p <- Control.Monad.State.Lazy.get
-  return . return $ p
-
-setParameters :: Monad m => Parameters -> Handler m i ()
-setParameters p = Handler $ do
-  Control.Monad.State.Lazy.put p
-  return . return $ ()
+getInput = Action (ask >>= (return . return . input))
 
 createClient :: (Serialize i, Serialize o) =>
   ServiceDescriptor i o -> Endpoint -> i -> IO (Outcome o)
@@ -57,14 +44,14 @@ createClient sd channel i =
       decode' body
 
 createSnap :: (S.MonadSnap m, Serialize i, Serialize o) =>
-    ServiceDescriptor i o -> Handler IO i o -> m ()
-createSnap d h =
+    ServiceDescriptor i o -> Parameters -> Handler IO i o -> m ()
+createSnap d params h =
   let pathAsBS = fromString . path $ d
       -- Exact match on PUT the path.
       blockInvalid = S.method S.PUT . S.path pathAsBS
-      (action, params) = runState (runHandler h) defaultParameters
+      action = h
   in blockInvalid $ do
-    req <- S.readRequestBody (bodySize params)
+    req <- S.readRequestBody . bodySize $ params
     outcome <- case (decodeLazy req) of
       Left _ -> return . ClientError $ "Server could not decode payload"
       Right i -> liftIO $ evalAction action i
