@@ -26,7 +26,9 @@ import qualified Snap.Core as S
 
 -- Util functions for doing useful things with the Handler Monad.
 getInput :: Monad m => Handler m i i
-getInput = Action (ask >>= (return . return . input))
+getInput = Action $ do
+  c <- ask
+  return $ input c
 
 createClient :: (Serialize i, Serialize o) =>
   ServiceDescriptor i o -> Endpoint -> i -> IO (Outcome o)

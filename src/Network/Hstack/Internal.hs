@@ -14,6 +14,22 @@ import qualified Network.URI as N
 import qualified Network.Stream as N
 import qualified Snap.Core as S
 
+data Outcome o = Ok o | ServerError String | ClientError String
+
+newtype OutcomeT m a = OutcomeT {
+  runOutcomeT :: m (Outcome a)
+}
+
+data Context i = Context {
+  input :: i
+}
+
+newtype Action m i o = Action {
+  runAction :: ReaderT (Context i) (OutcomeT m) o
+}
+
+type Handler m i o = Action m i o
+
 data (Serialize i, Serialize o) => ServiceDescriptor i o = ServiceDescriptor {
   path :: String
 }
@@ -23,12 +39,6 @@ data Endpoint = Endpoint {
   port :: Integer
 }
 
-data Context i = Context {
-  input :: i
-}
-
-data Outcome o = Ok o | ServerError String | ClientError String
-
 instance Monad Outcome where
   a >>= f = case a of
     Ok b -> f b
@@ -36,7 +46,6 @@ instance Monad Outcome where
     ClientError s -> ClientError s
   return = Ok
 
-type Handler m i o = Action m i o
 
 newtype Parameters = Parameters {
   bodySize :: Int64
@@ -46,10 +55,6 @@ instance MonadTrans OutcomeT where
   lift x = OutcomeT $ do
     v <- x
     return . Ok $ v
-
-newtype OutcomeT m a = OutcomeT {
-  runOutcomeT :: m (Outcome a)
-}
 
 instance Monad m => Monad (OutcomeT m) where
   a >>= f = OutcomeT $ do
@@ -68,25 +73,18 @@ instance (MonadIO m) => MonadIO (OutcomeT m) where
 defaultParameters :: Parameters
 defaultParameters = Parameters (1024*1024)
 
-newtype Action m i o = Action {
-  runAction :: Reader (Context i) (OutcomeT m o)
-}
-
 instance (Monad m) => Monad (Action m i) where
   a >>= f = Action $ do
-    r <- runAction a
-    c <- ask
-    let f' o = (runReader . runAction . f $ o) c
-    return $ r >>= f'
-  return x = Action . return . return $ x
+    runAction a >>= (runAction . f)
+  return x = Action . return $ x
 
 instance (MonadIO m) => MonadIO (Action m i) where
   liftIO a = Action $ do
-    return . liftIO $ a
+    liftIO $ a
 
 evalAction :: Action m i o -> i -> m (Outcome o)
 evalAction a i = let
-  ot = runReader (runAction a) (Context i)
+  ot = runReaderT (runAction a) (Context i)
   in runOutcomeT ot
 
 httpResultToOutcome :: N.Result o -> Outcome o
