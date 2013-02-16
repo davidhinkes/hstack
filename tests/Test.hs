@@ -18,10 +18,12 @@ test_1 = let
     _ -> False
 
 test_2 = let
-  a :: Handler Identity Int Int
-  a = do
+  h :: Handler Identity Int Int
+  h = do
     i <- getInput
     return (i*2)
+  a :: Action Identity Int Int
+  (a, _) = runState (runHandler $ h) defaultParameters
   in case runIdentity . evalAction a $ 5 of
     Ok 10 -> True
     _ -> False

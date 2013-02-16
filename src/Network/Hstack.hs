@@ -26,7 +26,7 @@ import qualified Snap.Core as S
 
 -- Util functions for doing useful things with the Handler Monad.
 getInput :: Monad m => Handler m i i
-getInput = Action $ do
+getInput = Handler . return . Action $ do
   c <- ask
   return $ input c
 
@@ -51,7 +51,7 @@ createSnap d params h =
   let pathAsBS = fromString . path $ d
       -- Exact match on PUT the path.
       blockInvalid = S.method S.PUT . S.path pathAsBS
-      action = h
+      (action, _) = (runState . runHandler $ h) defaultParameters
   in blockInvalid $ do
     req <- S.readRequestBody . bodySize $ params
     outcome <- case (decodeLazy req) of
