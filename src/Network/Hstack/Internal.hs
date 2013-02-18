@@ -28,7 +28,19 @@ newtype Action m i o = Action {
   runAction :: ReaderT (Context i) (OutcomeT m) o
 }
 
-type Handler m i o = Action m i o
+newtype Handler m i o = Handler {
+  runHandler :: State Parameters (Action m i o)
+}
+
+instance (Monad m) => Monad (Handler m i) where
+  return = Handler . return . return
+  a >> b = Handler $ do
+    runHandler a
+    runHandler b
+  a >>= f = fail "no implementation"
+
+instance (MonadIO m) => MonadIO (Handler m i) where
+  liftIO io = Handler . return . liftIO $ io
 
 data (Serialize i, Serialize o) => ServiceDescriptor i o = ServiceDescriptor {
   path :: String
