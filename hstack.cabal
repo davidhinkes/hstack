@@ -18,11 +18,13 @@ executable main
                  base ==4.6.*,
                  bytestring,
                  cereal,
+                 containers,
                  HTTP,
                  mtl,
                  network,
                  snap-core,
                  snap-server,
+                 stm,
                  transformers
 
 executable example-server
@@ -32,11 +34,13 @@ executable example-server
                  base ==4.6.*,
                  bytestring,
                  cereal,
+                 containers,
                  HTTP,
                  mtl,
                  network,
                  snap-core,
                  snap-server,
+                 stm,
                  transformers
 
 library
@@ -48,10 +52,12 @@ library
   build-depends: base ==4.6.*,
                  bytestring,
                  cereal,
+                 containers,
                  HTTP,
                  mtl,
                  network,
                  snap-core,
+                 stm,
                  transformers
 test-suite test
   type: exitcode-stdio-1.0
