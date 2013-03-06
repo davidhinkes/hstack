@@ -1,10 +1,14 @@
 module Network.Hstack.Internal where
 
+import Control.Concurrent.STM.TVar
+import Control.Concurrent.STM
 import Control.Monad.IO.Class
 import Control.Monad.State.Lazy
 import Control.Monad.Reader
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
+import Data.Maybe
+import Data.Map
 import Data.Int
 import Data.Serialize
 import Data.String
@@ -12,6 +16,7 @@ import qualified Network.HTTP.Base as N
 import qualified Network.HTTP as N
 import qualified Network.URI as N
 import qualified Network.Stream as N
+import qualified Text.JSON as J
 import qualified Snap.Core as S
 
 data Outcome o = Ok o | ServerError String | ClientError String
@@ -116,3 +121,27 @@ writeOutcome outcome = case outcome of
     S.modifyResponse (S.setResponseCode 500)
     S.writeBS (fromString msg)
     S.modifyResponse (S.setContentType . fromString $ "text/plain")
+
+type Variables = Map String Int
+
+data Registry m = Registry {
+  runRegistry :: TVar Variables -> m ()
+}
+
+emitVariable :: TVar Variables -> String -> Int -> STM ()
+emitVariable varsTVar s i = do
+  vars <- readTVar varsTVar
+  let alterFunction v = case v of
+                          Just j -> Just (j + i)
+                          Nothing -> Just i
+  let vars' = alter alterFunction s vars
+  writeTVar varsTVar vars
+
+variablesHandler :: (S.MonadSnap m) => Registry m
+variablesHandler = Registry f where
+  f vars = do
+    v <- liftIO $ atomically $ readTVar vars
+    S.modifyResponse (S.setResponseCode 200)
+    S.writeBS (fromString . J.encode $ v)
+    S.modifyResponse (S.setContentType . fromString $ "text/json")
+     

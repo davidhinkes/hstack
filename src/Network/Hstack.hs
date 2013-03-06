@@ -4,25 +4,28 @@ module Network.Hstack (
   Outcome(..),
   ServiceDescriptor(..),
   createClient,
-  createSnap,
   defaultParameters,
   getInput,
+  registerHandler,
+  run
 ) where
 
+import Control.Applicative
+import Control.Concurrent.STM.TVar
 import Control.Monad.IO.Class
-import Control.Monad.State.Lazy
 import Control.Monad.Reader
-import qualified Data.ByteString.Lazy as LBS
+import Control.Monad.Writer.Lazy
 import qualified Data.ByteString as BS
-import Data.Int
+import Data.Map
 import Data.Serialize
 import Data.String
 import Network.Hstack.Internal
 import qualified Network.HTTP.Base as N
 import qualified Network.HTTP as N
 import qualified Network.URI as N
-import qualified Network.Stream as N
 import qualified Snap.Core as S
+import qualified Snap.Http.Server as S
+import qualified Snap.Http.Server.Config as S
 
 -- Util functions for doing useful things with the Handler Monad.
 getInput :: Monad m => Handler m i i
@@ -45,9 +48,31 @@ createClient sd channel i =
       body <- httpResponseBody resp
       decode' body
 
-createSnap :: (S.MonadSnap m, Serialize i, Serialize o) =>
-    ServiceDescriptor i o -> Parameters -> Handler IO i o -> m ()
-createSnap d params h =
+instance S.MonadSnap m => Monoid (Registry m) where
+  mempty = Registry (\_ -> S.pass)
+  mappend a b = Registry (\v -> let a' = runRegistry a v
+                                    b' = runRegistry b v
+                                in a' <|> b')
+
+run :: Registry S.Snap -> IO ()
+run r = do
+  variables <- newTVarIO Data.Map.empty
+  let handlers = runRegistry (variablesHandler <> r) variables
+  S.httpServe S.defaultConfig handlers
+
+registerHandler :: (S.MonadSnap m, Serialize i, Serialize o) =>
+    ServiceDescriptor i o -> Parameters -> Handler IO i o -> Registry m
+registerHandler sd p h = Registry f where
+    f v = createSnap' v sd p h
+
+registerHandlerWithVariables :: (S.MonadSnap m, Serialize i, Serialize o) =>
+    ServiceDescriptor i o -> Parameters -> (TVar Variables -> Handler IO i o) -> Registry m
+registerHandlerWithVariables sd p f = Registry f' where
+  f' v = createSnap' v sd p (f v)
+
+createSnap' :: (S.MonadSnap m, Serialize i, Serialize o) =>
+    TVar Variables -> ServiceDescriptor i o -> Parameters -> Handler IO i o -> m ()
+createSnap' v d params h =
   let pathAsBS = fromString . path $ d
       -- Exact match on PUT the path.
       blockInvalid = S.method S.PUT . S.path pathAsBS
