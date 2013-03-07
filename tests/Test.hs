@@ -4,6 +4,7 @@ import Network.Hstack
 import Network.Hstack.Internal
 import Control.Monad.Identity
 import Control.Monad.State.Lazy
+import qualified Data.ByteString as BS
 import Data.Maybe
 import Test.Framework.Providers.QuickCheck2
 import Test.Framework (defaultMain)
@@ -22,7 +23,7 @@ test_2 = let
   a = do
     i <- getInput
     return (i*2)
-  in case runIdentity . evalAction a $ 5 of
+  in case runIdentity . evalAction a $ (Context 5 BS.empty) of
     Ok 10 -> True
     _ -> False
 tests = [ testProperty "CombineT" test_1,

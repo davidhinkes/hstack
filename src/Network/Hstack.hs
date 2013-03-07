@@ -7,6 +7,7 @@ module Network.Hstack (
   defaultParameters,
   getInput,
   registerHandler,
+  registerHandlerWithVariables,
   run
 ) where
 
@@ -25,7 +26,7 @@ import qualified Network.HTTP as N
 import qualified Network.URI as N
 import qualified Snap.Core as S
 import qualified Snap.Http.Server as S
-import qualified Snap.Http.Server.Config as S
+--import qualified Snap.Http.Server.Config as S
 
 -- Util functions for doing useful things with the Handler Monad.
 getInput :: Monad m => Handler m i i
@@ -77,9 +78,11 @@ createSnap' v d params h =
       -- Exact match on PUT the path.
       blockInvalid = S.method S.PUT . S.path pathAsBS
       action = h
-  in blockInvalid $ do 
-    req <- S.readRequestBody . bodySize $ params
-    outcome <- case (decodeLazy req) of
+  in blockInvalid $ do
+    req <- S.getRequest
+    body <- S.readRequestBody . bodySize $ params
+    let ip = S.rqRemoteAddr req
+    outcome <- case (decodeLazy body) of
       Left _ -> return . ClientError $ "Server could not decode payload"
-      Right i -> liftIO $ evalAction action i
+      Right i -> liftIO $ evalAction action (Context i ip)
     writeOutcome v outcome

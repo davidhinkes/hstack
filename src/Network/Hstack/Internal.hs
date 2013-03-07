@@ -26,7 +26,8 @@ newtype OutcomeT m a = OutcomeT {
 }
 
 data Context i = Context {
-  input :: i
+  input :: i,
+  remoteAddr :: BS.ByteString
 }
 
 newtype Action m i o = Action {
@@ -86,9 +87,9 @@ instance (MonadIO m) => MonadIO (Action m i) where
   liftIO a = Action $ do
     liftIO $ a
 
-evalAction :: Action m i o -> i -> m (Outcome o)
-evalAction a i = let
-  ot = runReaderT (runAction a) (Context i)
+evalAction :: Action m i o -> Context i -> m (Outcome o)
+evalAction a c = let
+  ot = runReaderT (runAction a) c
   in runOutcomeT ot
 
 httpResultToOutcome :: N.Result o -> Outcome o
