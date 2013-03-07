@@ -51,7 +51,6 @@ instance Monad Outcome where
     ClientError s -> ClientError s
   return = Ok
 
-
 newtype Parameters = Parameters {
   bodySize :: Int64
 }
