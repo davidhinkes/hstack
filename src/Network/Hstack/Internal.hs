@@ -1,5 +1,6 @@
 module Network.Hstack.Internal where
 
+import Control.Applicative
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
 import Control.Monad.IO.Class
@@ -9,6 +10,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
 import Data.Maybe
 import Data.Map
+import Data.Monoid 
 import Data.Int
 import Data.Serialize
 import Data.String
@@ -130,6 +132,12 @@ type Variables = Map String Int
 data Registry m = Registry {
   runRegistry :: TVar Variables -> m ()
 }
+
+instance S.MonadSnap m => Monoid (Registry m) where
+  mempty = Registry (\_ -> S.pass)
+  mappend a b = Registry (\v -> let a' = runRegistry a v
+                                    b' = runRegistry b v
+                                in a' <|> b')
 
 emitVariable :: TVar Variables -> String -> Int -> STM ()
 emitVariable varsTVar s i = do

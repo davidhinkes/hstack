@@ -6,6 +6,7 @@ module Network.Hstack (
   createClient,
   defaultParameters,
   getInput,
+  getRemoteAddr,
   registerHandler,
   registerHandlerWithVariables,
   run
@@ -26,13 +27,17 @@ import qualified Network.HTTP as N
 import qualified Network.URI as N
 import qualified Snap.Core as S
 import qualified Snap.Http.Server as S
---import qualified Snap.Http.Server.Config as S
 
 -- Util functions for doing useful things with the Handler Monad.
 getInput :: Monad m => Handler m i i
 getInput = Action $ do
   c <- ask
   return $ input c
+
+getRemoteAddr :: Monad m => Handler m i BS.ByteString
+getRemoteAddr = Action $ do
+  c <- ask
+  return $ remoteAddr c
 
 createClient :: (Serialize i, Serialize o) =>
   ServiceDescriptor i o -> Endpoint -> i -> IO (Outcome o)
@@ -48,12 +53,6 @@ createClient sd channel i =
       resp <- httpResultToOutcome res
       body <- httpResponseBody resp
       decode' body
-
-instance S.MonadSnap m => Monoid (Registry m) where
-  mempty = Registry (\_ -> S.pass)
-  mappend a b = Registry (\v -> let a' = runRegistry a v
-                                    b' = runRegistry b v
-                                in a' <|> b')
 
 run :: Registry S.Snap -> IO ()
 run r = do
