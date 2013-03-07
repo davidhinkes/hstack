@@ -77,9 +77,9 @@ createSnap' v d params h =
       -- Exact match on PUT the path.
       blockInvalid = S.method S.PUT . S.path pathAsBS
       action = h
-  in blockInvalid $ do
+  in blockInvalid $ do 
     req <- S.readRequestBody . bodySize $ params
     outcome <- case (decodeLazy req) of
       Left _ -> return . ClientError $ "Server could not decode payload"
       Right i -> liftIO $ evalAction action i
-    writeOutcome outcome
+    writeOutcome v outcome

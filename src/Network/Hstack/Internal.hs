@@ -107,20 +107,23 @@ decode' msg = case (decode msg) of
   Left msg -> ClientError $ msg
   Right o -> Ok o
 
-writeOutcome :: (S.MonadSnap m, Serialize o) => Outcome o -> m ()
-writeOutcome outcome = case outcome of
+writeOutcome :: (S.MonadSnap m, Serialize o) => TVar Variables -> Outcome o -> m ()
+writeOutcome v outcome = case outcome of
   Ok o -> do
     S.modifyResponse (S.setResponseCode 200)
     S.writeBS (encode o)
     S.modifyResponse (S.setContentType . fromString $ "text/base64")
+    liftIO $ atomically $ emitVariable v "_/return-code/200" 1
   ClientError msg -> do
     S.modifyResponse (S.setResponseCode 400)
     S.writeBS (fromString msg)
     S.modifyResponse (S.setContentType . fromString $ "text/plain")
+    liftIO $ atomically $ emitVariable v "_/return-code/400" 1
   ServerError msg -> do
     S.modifyResponse (S.setResponseCode 500)
     S.writeBS (fromString msg)
     S.modifyResponse (S.setContentType . fromString $ "text/plain")
+    liftIO $ atomically $ emitVariable v "_/return-code/500" 1
 
 type Variables = Map String Int
 
@@ -135,11 +138,11 @@ emitVariable varsTVar s i = do
                           Just j -> Just (j + i)
                           Nothing -> Just i
   let vars' = alter alterFunction s vars
-  writeTVar varsTVar vars
+  writeTVar varsTVar vars'
 
 variablesHandler :: (S.MonadSnap m) => Registry m
 variablesHandler = Registry f where
-  f vars = do
+  f vars = S.path (fromString "_/variables") $ do
     v <- liftIO $ atomically $ readTVar vars
     S.modifyResponse (S.setResponseCode 200)
     S.writeBS (fromString . J.encode $ v)

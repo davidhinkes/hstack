@@ -1,10 +1,9 @@
 module Main where
 
 import Network.Hstack
-import Network.Hstack.Example
+import Example
 
 main = do
-  
   result <- createClient d (Endpoint "hink.es" 8000) (AddRequest 1 2)
   case result of
     Ok o -> print o

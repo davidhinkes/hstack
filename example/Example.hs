@@ -1,4 +1,4 @@
-module Network.Hstack.Example where
+module Example where
 
 import Data.Serialize
 import Network.Hstack
@@ -32,7 +32,3 @@ instance Serialize AddResponse where
 d :: ServiceDescriptor AddRequest AddResponse
 d = ServiceDescriptor "add"
 
-h :: Handler IO AddRequest AddResponse
-h = do
-  i <- getInput
-  return $ AddResponse (a i + b i)

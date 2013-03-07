@@ -15,19 +15,19 @@ executable example-client
   main-is: Client.hs
   hs-source-dirs: example
   build-depends: hstack,
-                 base ==4.6.*
+                 base ==4.6.*,
+                 cereal
 
 executable example-server
   main-is: Server.hs
   hs-source-dirs: example 
   build-depends: hstack,
-                 base ==4.6.*
-
+                 base ==4.6.*,
+                 cereal
 library
   exposed: True
   ghc-options: -Wall
   exposed-modules: Network.Hstack,
-                   Network.Hstack.Example
                    Network.Hstack.Internal
   hs-source-dirs: src       
   build-depends: base ==4.6.*,
