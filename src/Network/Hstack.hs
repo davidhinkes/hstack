@@ -45,30 +45,6 @@ request ::
     => ServiceDescriptor i o -> Endpoint -> i -> IO (Outcome o)
 request = request' N.simpleHTTP N.catchIO
 
--- request' lacks IO, hence is testable.
-request' ::
-    (Serialize i, Serialize o, Monad m)
-    => (N.Request BS.ByteString -> m (N.Result (N.Response BS.ByteString)))
-    -> (m (Outcome o) -> (IOException -> m (Outcome o)) -> m (Outcome o))
-    -> ServiceDescriptor i o
-    -> Endpoint
-    -> i
-    -> m (Outcome o)
-request' simpleHTTP catchIO sd channel i =
-  let auth = N.URIAuth "" (host channel) (":" ++ (show . port $ channel))
-      uri = N.URI "http:" (Just auth) ("/" ++ path sd) "" ""
-      payload = encode i
-      contentLength = N.mkHeader N.HdrContentLength (show . BS.length $ payload)
-      req = N.Request uri N.PUT [contentLength] payload
-      handleIOError _ = return $ ConnectionError "Could not make connection."
-      run = do
-        res <- simpleHTTP req
-        return $ do
-          resp <- httpResultToOutcome res
-          body <- httpResponseBody resp
-          decode' body
-  in catchIO run handleIOError
-
 run :: Registry S.Snap -> IO ()
 run r = do
   variables <- newTVarIO Data.Map.empty

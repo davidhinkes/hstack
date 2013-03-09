@@ -3,6 +3,7 @@ module Network.Hstack.Internal where
 import Control.Applicative
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
+import Control.Exception.Base
 import Control.Monad.IO.Class
 import Control.Monad.State.Lazy
 import Control.Monad.Reader
@@ -129,6 +130,14 @@ writeOutcome v outcome = case outcome of
     S.writeBS (fromString msg)
     S.modifyResponse (S.setContentType . fromString $ "text/plain")
     liftIO $ atomically $ emitVariable v "_/return-code/500" 1
+  -- ConnectionError should really not happen, but we include it for
+  -- completeness.
+  ConnectionError msg -> do
+    S.modifyResponse (S.setResponseCode 500)
+    S.writeBS (fromString msg)
+    S.modifyResponse (S.setContentType . fromString $ "text/plain")
+    liftIO $ atomically $ emitVariable v "_/return-code/500" 1
+
 
 type Variables = Map String Int
 
@@ -158,4 +167,27 @@ variablesHandler = Registry f where
     S.modifyResponse (S.setResponseCode 200)
     S.writeBS (fromString . J.encode $ v)
     S.modifyResponse (S.setContentType . fromString $ "text/json")
-     
+
+-- request' lacks IO, hence is testable.
+request' ::
+    (Serialize i, Serialize o, Monad m)
+    => (N.Request BS.ByteString -> m (N.Result (N.Response BS.ByteString)))
+    -> (m (Outcome o) -> (IOException -> m (Outcome o)) -> m (Outcome o))
+    -> ServiceDescriptor i o
+    -> Endpoint
+    -> i
+    -> m (Outcome o)
+request' simpleHTTP catchIO sd channel i =
+  let auth = N.URIAuth "" (host channel) (":" ++ (show . port $ channel))
+      uri = N.URI "http:" (Just auth) ("/" ++ path sd) "" ""
+      payload = encode i
+      contentLength = N.mkHeader N.HdrContentLength (show . BS.length $ payload)
+      req = N.Request uri N.PUT [contentLength] payload
+      handleIOError _ = return $ ConnectionError "Could not make connection."
+      run = do
+        res <- simpleHTTP req
+        return $ do
+          resp <- httpResultToOutcome res
+          body <- httpResponseBody resp
+          decode' body
+  in catchIO run handleIOError
