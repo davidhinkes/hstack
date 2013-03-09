@@ -47,12 +47,14 @@ createClient sd channel i =
       payload = encode i
       contentLength = N.mkHeader N.HdrContentLength (show . BS.length $ payload)
       req = N.Request uri N.PUT [contentLength] payload
-  in do
-    res <-  N.simpleHTTP req
-    return $ do
-      resp <- httpResultToOutcome res
-      body <- httpResponseBody resp
-      decode' body
+      handleIOError _ = return $ ConnectionError "Could not make connection."
+      run = do
+        res <- N.simpleHTTP req
+        return $ do
+          resp <- httpResultToOutcome res
+          body <- httpResponseBody resp
+          decode' body
+  in N.catchIO run handleIOError
 
 run :: Registry S.Snap -> IO ()
 run r = do

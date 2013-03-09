@@ -21,7 +21,7 @@ import qualified Network.Stream as N
 import qualified Text.JSON as J
 import qualified Snap.Core as S
 
-data Outcome o = Ok o | ServerError String | ClientError String
+data Outcome o = Ok o | ServerError String | ClientError String | ConnectionError String
 
 newtype OutcomeT m a = OutcomeT {
   runOutcomeT :: m (Outcome a)
@@ -52,6 +52,7 @@ instance Monad Outcome where
     Ok b -> f b
     ServerError s -> ServerError s
     ClientError s -> ClientError s
+    ConnectionError s -> ConnectionError s
   return = Ok
 
 newtype Parameters = Parameters {
@@ -70,6 +71,7 @@ instance Monad m => Monad (OutcomeT m) where
       Ok e -> runOutcomeT . f $ e
       ServerError s -> return . ServerError $ s
       ClientError s -> return . ClientError $ s
+      ConnectionError s -> return . ConnectionError $ s
   return a = lift . return $ a
 
 instance (MonadIO m) => MonadIO (OutcomeT m) where
@@ -102,6 +104,7 @@ httpResultToOutcome r = case r of
 httpResponseBody :: Show a => N.Response a -> Outcome a
 httpResponseBody r = case r of
   N.Response (2,_,_) _ _ bdy -> Ok bdy
+  N.Response (5,_,_) _ _ bdy -> ClientError $ "5XX HTTP response code :" ++ (show bdy)
   N.Response _ _ _ bdy ->  ClientError $ "Non 200 HTTP response code :" ++ (show bdy)
 
 decode' :: Serialize a => BS.ByteString -> Outcome a

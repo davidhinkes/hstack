@@ -9,3 +9,4 @@ main = do
     Ok o -> print o
     ClientError e -> print e
     ServerError e -> print e
+    ConnectionError e -> print e
