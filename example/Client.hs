@@ -4,7 +4,7 @@ import Network.Hstack
 import Example
 
 main = do
-  result <- createClient d (Endpoint "hink.es" 8000) (AddRequest 1 2)
+  result <- request d (Endpoint "hink.es" 8000) (AddRequest 1 2)
   case result of
     Ok o -> print o
     ClientError e -> print e
