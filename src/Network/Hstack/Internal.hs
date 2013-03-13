@@ -4,6 +4,7 @@ import Control.Applicative
 import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
 import Control.Exception.Base
+import Control.Monad.Identity
 import Control.Monad.IO.Class
 import Control.Monad.State.Lazy
 import Control.Monad.Reader
@@ -48,14 +49,6 @@ data Endpoint = Endpoint {
   port :: Integer
 }
 
-instance Monad Outcome where
-  a >>= f = case a of
-    Ok b -> f b
-    ServerError s -> ServerError s
-    ClientError s -> ClientError s
-    ConnectionError s -> ConnectionError s
-  return = Ok
-
 newtype Parameters = Parameters {
   bodySize :: Int64
 }
@@ -97,21 +90,21 @@ evalAction a c = let
   ot = runReaderT (runAction a) c
   in runOutcomeT ot
 
-httpResultToOutcome :: N.Result o -> Outcome o
+httpResultToOutcome :: N.Result o -> OutcomeT Identity o
 httpResultToOutcome r = case r of
-  Left _ -> ClientError "Could not make connection."
-  Right a -> Ok a
+  Left _ -> OutcomeT . Identity $ ClientError "Could not make connection."
+  Right a -> return a
 
-httpResponseBody :: Show a => N.Response a -> Outcome a
+httpResponseBody :: Show a => N.Response a -> OutcomeT Identity a
 httpResponseBody r = case r of
-  N.Response (2,_,_) _ _ bdy -> Ok bdy
-  N.Response (5,_,_) _ _ bdy -> ClientError $ "5XX HTTP response code :" ++ (show bdy)
-  N.Response _ _ _ bdy ->  ClientError $ "Non 200 HTTP response code :" ++ (show bdy)
+  N.Response (2,_,_) _ _ bdy -> return bdy
+  N.Response (5,_,_) _ _ bdy -> OutcomeT . Identity $ ClientError $ "5XX HTTP response code :" ++ (show bdy)
+  N.Response _ _ _ bdy -> OutcomeT . Identity $ ClientError $ "Non 200 HTTP response code :" ++ (show bdy)
 
-decode' :: Serialize a => BS.ByteString -> Outcome a
+decode' :: Serialize a => BS.ByteString -> OutcomeT Identity a
 decode' msg = case (decode msg) of
-  Left msg -> ClientError $ msg
-  Right o -> Ok o
+  Left msg -> OutcomeT . Identity . ClientError $ msg
+  Right o -> return o
 
 writeOutcome :: (S.MonadSnap m, Serialize o) => TVar Variables -> Outcome o -> m ()
 writeOutcome v outcome = case outcome of
@@ -137,7 +130,6 @@ writeOutcome v outcome = case outcome of
     S.writeBS (fromString msg)
     S.modifyResponse (S.setContentType . fromString $ "text/plain")
     liftIO $ atomically $ emitVariable v "_/return-code/500" 1
-
 
 type Variables = Map String Int
 
@@ -186,7 +178,7 @@ request' simpleHTTP catchIO sd channel i =
       handleIOError _ = return $ ConnectionError "Could not make connection."
       run = do
         res <- simpleHTTP req
-        return $ do
+        return . runIdentity . runOutcomeT $ do
           resp <- httpResultToOutcome res
           body <- httpResponseBody resp
           decode' body
