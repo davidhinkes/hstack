@@ -8,9 +8,7 @@ import Control.Monad.Identity
 import Control.Monad.IO.Class
 import Control.Monad.State.Lazy
 import Control.Monad.Reader
-import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
-import Data.Maybe
 import Data.Map
 import Data.Monoid 
 import Data.Int
@@ -102,7 +100,7 @@ httpResponseBody r = case r of
   N.Response _ _ _ bdy -> OutcomeT . Identity $ ClientError $ "Non 200 HTTP response code :" ++ (show bdy)
 
 decode' :: Serialize a => BS.ByteString -> OutcomeT Identity a
-decode' msg = case (decode msg) of
+decode' m = case (decode m) of
   Left msg -> OutcomeT . Identity . ClientError $ msg
   Right o -> return o
 
@@ -113,21 +111,21 @@ writeOutcome v outcome = case outcome of
     S.writeBS (encode o)
     S.modifyResponse (S.setContentType . fromString $ "text/base64")
     liftIO $ atomically $ emitVariable v "_/return-code/200" 1
-  ClientError msg -> do
+  ClientError m -> do
     S.modifyResponse (S.setResponseCode 400)
-    S.writeBS (fromString msg)
+    S.writeBS (fromString m)
     S.modifyResponse (S.setContentType . fromString $ "text/plain")
     liftIO $ atomically $ emitVariable v "_/return-code/400" 1
-  ServerError msg -> do
+  ServerError m -> do
     S.modifyResponse (S.setResponseCode 500)
-    S.writeBS (fromString msg)
+    S.writeBS (fromString m)
     S.modifyResponse (S.setContentType . fromString $ "text/plain")
     liftIO $ atomically $ emitVariable v "_/return-code/500" 1
   -- ConnectionError should really not happen, but we include it for
   -- completeness.
-  ConnectionError msg -> do
+  ConnectionError m -> do
     S.modifyResponse (S.setResponseCode 500)
-    S.writeBS (fromString msg)
+    S.writeBS (fromString m)
     S.modifyResponse (S.setContentType . fromString $ "text/plain")
     liftIO $ atomically $ emitVariable v "_/return-code/500" 1
 

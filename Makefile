@@ -1,13 +1,16 @@
 all: build
 
 configure:
-	cabal configure --enable-tests || exit 1
+	cabal configure --enable-tests
 
 build:
-	cabal build || exit 1
+	cabal build
 
 test:
 	cabal test
 
 dist:
-	cabal 
+	cabal dist
+
+clean:
+	cabal clean

@@ -27,7 +27,6 @@ executable example-server
                  base ==4.6.*,
                  cereal
 library
-  exposed: True
   ghc-options: -Wall
   exposed-modules: Network.Hstack,
                    Network.Hstack.Internal

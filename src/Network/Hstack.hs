@@ -13,7 +13,6 @@ module Network.Hstack (
 ) where
 
 import Control.Concurrent.STM.TVar
-import Control.Exception.Base
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Control.Monad.Writer.Lazy
@@ -24,8 +23,6 @@ import Data.String
 import Network.Hstack.Internal
 import qualified Network.HTTP.Base as N
 import qualified Network.HTTP as N
-import qualified Network.Stream as N
-import qualified Network.URI as N
 import qualified Snap.Core as S
 import qualified Snap.Http.Server as S
 
