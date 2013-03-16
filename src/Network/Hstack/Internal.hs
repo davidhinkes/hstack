@@ -45,7 +45,7 @@ data (Serialize i, Serialize o) => ServiceDescriptor i o = ServiceDescriptor {
 data Endpoint = Endpoint {
   host :: String,
   port :: Integer
-}
+} deriving (Eq, Ord)
 
 newtype Parameters = Parameters {
   bodySize :: Int64
