@@ -14,6 +14,7 @@ import Data.Monoid
 import Data.Int
 import Data.Serialize
 import Data.String
+import Data.Word
 import qualified Network.HTTP.Base as N
 import qualified Network.HTTP as N
 import qualified Network.URI as N
@@ -42,9 +43,11 @@ data (Serialize i, Serialize o) => ServiceDescriptor i o = ServiceDescriptor {
   path :: String
 }
 
+type Port = Word16
+
 data Endpoint = Endpoint {
   host :: String,
-  port :: Integer
+  port :: Port
 } deriving (Eq, Ord)
 
 newtype Parameters = Parameters {
