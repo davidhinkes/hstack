@@ -9,7 +9,8 @@ module Network.Hstack (
   getRemoteAddr,
   registerHandler,
   registerHandlerWithVariables,
-  run
+  run,
+  runWithConfig
 ) where
 
 import Control.Concurrent.STM.TVar
@@ -42,11 +43,14 @@ request ::
     => ServiceDescriptor i o -> Endpoint -> i -> IO (Outcome o)
 request = request' N.simpleHTTP N.catchIO
 
-run :: Registry S.Snap -> IO ()
-run r = do
+runWithConfig :: Registry S.Snap -> S.Config S.Snap a -> IO ()
+runWithConfig r c = do
   variables <- newTVarIO Data.Map.empty
   let handlers = runRegistry (variablesHandler <> r) variables
-  S.httpServe S.defaultConfig handlers
+  S.httpServe c handlers
+
+run :: Registry S.Snap -> IO ()
+run r = runWithConfig r S.defaultConfig 
 
 registerHandler ::
     (S.MonadSnap m, Serialize i, Serialize o)
